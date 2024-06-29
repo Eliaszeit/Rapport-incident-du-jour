@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journal des Incidents COS SE - Ajout</title>
+    <style>
+        body {
+            display: flex;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        .incidents {
+            width: 75%;
+            padding: 20px;
+            background-color: #f9f9f9;
+            box-sizing: border-box;
+        }
+        .saisie-incident {
+            width: 25%;
+            padding: 20px;
+            background-color: #f4f4f4;
+            box-sizing: border-box;
+            position: fixed;
+            right: 0;
+            top: 0;
+        }
+        .container {
+            max-width: 100%;
+            margin: auto;
+        }
+        .incident-entry {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+        }
+        .incident-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .incident-info {
+            display: flex;
+            align-items: center;
+        }
+        .incident-title {
+            font-weight: bold;
+            color: red;
+            font-size: 1.2em;
+            margin-right: 20px;
+        }
+        .incident-details {
+            font-size: 0.9em;
+            color: #555;
+        }
+        .incident-description {
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap; /* This ensures new lines are rendered */
+        }
+        .additional-info {
+            margin-top: 10px;
+        }
+        .incident-list {
+            margin-top: 20px;
+        }
+        .edit-description {
+            display: none;
+        }
+        .btn-supprimer {
+            background-color: red;
+            color: white;
+        }
+        .btn-editer, .btn-ajouter-info {
+            background-color: blue;
+            color: white;
+        }
+        .btn-supprimer, .btn-editer, .btn-ajouter-info {
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 14px;
+            margin-right: 5px;
+        }
+        .btn-supprimer:hover {
+            background-color: darkred;
+        }
+        .btn-editer:hover, .btn-ajouter-info:hover {
+            background-color: darkblue;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="incidents">
+        <h1>Journal des incidents COS SE</h1>
+        <p>Date du jour : <span id="currentDate"></span></p>
+        <div class="incident-list" id="incidentList"></div>
+    </div>
+
+    <div class="saisie-incident">
+        <form id="incidentForm">
+            <label for="incidentTitle">Titre de l'incident :</label><br>
+            <select id="incidentTitle" name="incidentTitle" required>
+                <option value="">Sélectionner un titre...</option>
+            </select><br>
+            <input type="text" id="customIncidentTitle" placeholder="ou saisir un titre personnalisé"><br><br>
+
+            <div class="input-container">
+                <select id="incidentLieu" name="incidentLieu" required>
+                    <option value="">Sélectionner un lieu...</option>
+                </select>
+                <input type="text" id="customIncidentLieu" placeholder="ou saisir un lieu personnalisé">
+            </div><br>
+
+            <label for="incidentDescription">Description de l'incident :</label><br>
+            <textarea id="incidentDescription" name="incidentDescription" rows="4" cols="50" required></textarea><br>
+            <button type="button" onclick="ajouterIncident()">Ajouter Incident</button>
+        </form>
+    </div>
+
+    <script>
+        let incidentId = 0;
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            chargerDonnees();
+            afficherDateDuJour();
+            initialiserTitresIncidents();
+        });
+
+        function chargerDonnees() {
+            const incidents = getIncidents();
+            const lieux = getLieux();
+
+            if (!incidents || !lieux) {
+                initialiserLocalStorage();
+            } else {
+                chargerLieuxIncidents();
+                afficherIncidents();
+            }
+        }
+
+        function initialiserLocalStorage() {
+            localStorage.setItem('incidents', JSON.stringify([]));
+            localStorage.setItem('lieuxIncidents', JSON.stringify([]));
+        }
+
+        function getIncidents() {
+            return JSON.parse(localStorage.getItem('incidents')) || [];
+        }
+
+        function setIncidents(incidents) {
+            localStorage.setItem('incidents', JSON.stringify(incidents));
+        }
+
+        function getLieux() {
+            return JSON.parse(localStorage.getItem('lieuxIncidents')) || [];
+        }
+
+        function setLieux(lieux) {
+            localStorage.setItem('lieuxIncidents', JSON.stringify(lieux));
+        }
+
+        function initialiserTitresIncidents() {
+            const titres = [
+                "Arrivée tardive du matériel",
+                "Voyageur malade",
+                "Bâche flottante",
+                "Choc anormal",
+                "Conditions météorologiques",
+                "Défaillance de matériel",
+                "Défaillance des outils",
+                "Incident caténaire",
+                "Dérangement d'un aiguillage",
+                "Dérangement de la signalisation",
+                "Difficulté lors de la préparation technique",
+                "Erreur d'itinéraire",
+                "Franchissement intempestif du signal d'arrêt",
+                "Fuite matière dangereuse",
+                "Heurt d'un animal",
+                "Incendie aux abords de la voie",
+                "Incident sur un autre réseau",
+                "Individus sur les voies",
+                "Jet de pierre ou tirs de projectiles",
+                "Obstacle",
+                "Panne d'un autre train",
+                "Rail cassé",
+                "Signal d'alarme",
+                "Restitution tardive des travaux",
+                "Vol de câble",
+                "Intervention des forces de l'ordre"
+            ];
+
+            const titresStored = getTitres();
+
+            // Ajouter uniquement les titres qui ne sont pas déjà présents
+            titres.forEach(titre => {
+                if (!titresStored.includes(titre)) {
+                    titresStored.push(titre);
+                }
+            });
+
+            // Trier les titres par ordre alphabétique
+            titresStored.sort((a, b) => a.localeCompare(b));
+
+            setTitres(titresStored);
+            chargerTitresIncidents();
+        }
+
+        function getTitres() {
+            return JSON.parse(localStorage.getItem('titresIncidents')) || [];
+        }
+
+        function setTitres(titres) {
+            localStorage.setItem('titresIncidents', JSON.stringify(titres));
+        }
+
+        function chargerTitresIncidents() {
+            const titres = getTitres();
+            const selectElement = document.getElementById('incidentTitle');
+            selectElement.innerHTML = '<option value="">Sélectionner un titre...</option>';
+
+            titres.forEach(title => {
+                const option = document.createElement('option');
+                option.text = title;
+                option.value = title;
+                selectElement.add(option);
+            });
+        }
+
+        function chargerLieuxIncidents() {
+            const lieux = getLieux();
+            const selectElement = document.getElementById('incidentLieu');
+            selectElement.innerHTML = '<option value="">Sélectionner un lieu...</option>';
+
+            lieux.sort((a, b) => a.localeCompare(b)); // Tri des lieux par ordre alphabétique
+
+            lieux.forEach(lieu => {
+                const option = document.createElement('option');
+                option.text = lieu;
+                option.value = lieu;
+                selectElement.add(option);
+            });
+        }
+
+        function afficherDateDuJour() {
+            const now = new Date();
+            const dateElement = document.getElementById('currentDate');
+            dateElement.textContent = now.toLocaleDateString('fr-FR');
+        }
+
+        function ajouterIncident() {
+            let incidentTitle = '';
+            let incidentLieu = '';
+            const selectTitleElement = document.getElementById('incidentTitle');
+            const selectLieuElement = document.getElementById('incidentLieu');
+            const customTitleInput = document.getElementById('customIncidentTitle').value.trim();
+            const customLieuInput = document.getElementById('customIncidentLieu').value.trim();
+
+            if (customTitleInput !== '') {
+                incidentTitle = customTitleInput;
+            } else {
+                incidentTitle = selectTitleElement.value;
+                if (incidentTitle === '') {
+                    alert('Veuillez sélectionner un titre ou saisir un titre personnalisé.');
+                    return;
+                }
+            }
+
+            if (customLieuInput !== '') {
+                incidentLieu = customLieuInput;
+            } else {
+                incidentLieu = selectLieuElement.value;
+                if (incidentLieu === '') {
+                    alert('Veuillez sélectionner un lieu ou saisir un lieu personnalisé.');
+                    return;
+                }
+            }
+
+            const incidentDescription = document.getElementById('incidentDescription').value.trim();
+            if (incidentDescription === '') {
+                alert('Veuillez saisir une description.');
+                return;
+            }
+
+            const time = new Date().toLocaleTimeString('fr-FR');
+
+            const newIncident = {
+                id: incidentId++,
+                title: incidentTitle,
+                lieu: incidentLieu,
+                description: incidentDescription,
+                time: time
+            };
+
+            const incidents = getIncidents();
+            incidents.push(newIncident);
+            setIncidents(incidents);
+
+            if (customLieuInput !== '' && !getLieux().includes(customLieuInput)) {
+                const lieux = getLieux();
+                lieux.push(customLieuInput);
+                setLieux(lieux);
+                chargerLieuxIncidents();
+            }
+
+            afficherIncidents();
+            document.getElementById('incidentForm').reset();
+        }
+
+        function afficherIncidents() {
+            const incidents = getIncidents();
+            const incidentList = document.getElementById('incidentList');
+            incidentList.innerHTML = '';
+
+            incidents.forEach(incident => {
+                const incidentEntry = document.createElement('div');
+                incidentEntry.classList.add('incident-entry');
+                incidentEntry.setAttribute('data-id', incident.id);
+
+                const incidentHeader = document.createElement('div');
+                incidentHeader.classList.add('incident-header');
+
+                const incidentInfo = document.createElement('div');
+                incidentInfo.classList.add('incident-info');
+
+                const incidentTitle = document.createElement('div');
+                incidentTitle.classList.add('incident-title');
+                incidentTitle.textContent = incident.title;
+
+                const incidentTime = document.createElement('div');
+                incidentTime.classList.add('incident-details');
+                incidentTime.textContent = incident.time;
+
+                incidentInfo.appendChild(incidentTitle);
+                incidentInfo.appendChild(incidentTime);
+
+                const buttonContainer = document.createElement('div');
+                buttonContainer.classList.add('button-container');
+
+                const btnSupprimer = document.createElement('button');
+                btnSupprimer.classList.add('btn-supprimer');
+                btnSupprimer.textContent = 'Supprimer';
+                btnSupprimer.onclick = () => supprimerIncident(incident.id);
+
+                const btnEditer = document.createElement('button');
+                btnEditer.classList.add('btn-editer');
+                btnEditer.textContent = 'Editer';
+                btnEditer.onclick = () => editerIncident(incident.id);
+
+                const btnAjouterInfo = document.createElement('button');
+                btnAjouterInfo.classList.add('btn-ajouter-info');
+                btnAjouterInfo.textContent = 'Ajouter info';
+                btnAjouterInfo.onclick = () => ajouterInfoIncident(incident.id);
+
+                buttonContainer.appendChild(btnSupprimer);
+                buttonContainer.appendChild(btnEditer);
+                buttonContainer.appendChild(btnAjouterInfo);
+
+                incidentHeader.appendChild(incidentInfo);
+                incidentHeader.appendChild(buttonContainer);
+
+                const incidentLieu = document.createElement('div');
+                incidentLieu.classList.add('incident-details');
+                incidentLieu.textContent = "Lieu: " + incident.lieu;
+
+                const incidentDescription = document.createElement('div');
+                incidentDescription.classList.add('incident-description');
+                incidentDescription.textContent = incident.description;
+
+                incidentEntry.appendChild(incidentHeader);
+                incidentEntry.appendChild(incidentLieu);
+                incidentEntry.appendChild(incidentDescription);
+
+                incidentList.appendChild(incidentEntry);
+            });
+        }
+
+        function supprimerIncident(id) {
+            const incidents = getIncidents();
+            const newIncidents = incidents.filter(incident => incident.id !== id);
+            setIncidents(newIncidents);
+            afficherIncidents();
+        }
+
+        function editerIncident(id) {
+            const incidents = getIncidents();
+            const incident = incidents.find(incident => incident.id === id);
+            if (!incident) return;
+
+            document.getElementById('incidentTitle').value = incident.title;
+            document.getElementById('incidentDescription').value = incident.description;
+            document.getElementById('incidentLieu').value = incident.lieu;
+
+            supprimerIncident(id);
+        }
+
+        function ajouterInfoIncident(id) {
+            const incidents = getIncidents();
+            const incident = incidents.find(incident => incident.id === id);
+            if (!incident) return;
+
+            const newInfo = prompt("Ajouter des informations supplémentaires pour cet incident:", "");
+            if (newInfo) {
+                const time = new Date().toLocaleTimeString('fr-FR');
+                incident.description += `\n${time}: ${newInfo}`;
+                setIncidents(incidents);
+                afficherIncidents();
+            }
+        }
+    </script>
+</body>
+</html>
